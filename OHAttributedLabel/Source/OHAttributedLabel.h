@@ -76,6 +76,7 @@ typedef NS_OPTIONS(int32_t, OHBoldStyleTrait) {
 
 @interface OHAttributedLabel : UILabel <UIAppearance>
 
+@property (retain, nonatomic) NSMutableArray* images;
 //! Use this instead of the "text" property inherited from UILabel to set and get attributed text
 @property(nonatomic, copy) NSAttributedString* attributedText;
 //! rebuild the attributedString based on UILabel's text/font/color/alignment/... properties, cleaning any custom attribute

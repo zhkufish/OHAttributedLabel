@@ -48,7 +48,7 @@
 #pragma mark - Private interface
 /////////////////////////////////////////////////////////////////////////////////////
 
-
+const CGFloat kEmotiomOriginYOffsetRatioWithLineHeight = 0.20; //表情绘制的y坐标矫正值，和字体高度的比例，越大越往下
 const int UITextAlignmentJustify = ((UITextAlignment)kCTJustifiedTextAlignment);
 
 @interface OHAttributedLabel(/* Private */) <UIGestureRecognizerDelegate>
@@ -540,6 +540,39 @@ NSDataDetector* sharedReusableDataDetector(NSTextCheckingTypes types)
                 CGContextSetShadowWithColor(ctx, self.shadowOffset, 0.0, self.shadowColor.CGColor);
             }
             
+            [self.images removeAllObjects];
+            if ([self.images count]<=0) {
+                //算出所有图片
+                if (self.images==nil) {
+                    self.images = [NSMutableArray array];
+                }
+                
+                [_attributedText enumerateAttribute:kOHEmotionAttributeName inRange:NSMakeRange(0, [_attributedText length])
+                                            options:NSAttributedStringEnumerationReverse usingBlock:^(id value, NSRange range, BOOL *stop)
+                 {
+                     if (value)
+                     {
+                         for(int i =1; i<=range.length;++i){
+                             //add the image for drawing
+                             NSArray *ary = [value componentsSeparatedByString:@"|"];
+                             if ([ary count] == 3) {
+                                 [self.images addObject:
+                                  [NSDictionary dictionaryWithObjectsAndKeys:
+                                   ary[1], @"width",
+                                   ary[2], @"height",
+                                   ary[0], @"fileName",
+                                   [NSNumber numberWithInteger: NSMaxRange(range)-i], @"location",
+                                   nil]
+                                  ];
+                             }
+                         }
+                         
+                         
+                     }
+                 }];
+                self.images = [NSMutableArray arrayWithArray:[[self.images reverseObjectEnumerator] allObjects]];
+            }
+            
             [self recomputeLinksInTextIfNeeded];
             NSAttributedString* attributedStringToDisplay = _attributedTextWithLinks;
             if (self.highlighted && self.highlightedTextColor != nil)
@@ -570,6 +603,9 @@ NSDataDetector* sharedReusableDataDetector(NSTextCheckingTypes types)
                 CGMutablePathRef path = CGPathCreateMutable();
                 CGPathAddRect(path, NULL, drawingRect);
                 textFrame = CTFramesetterCreateFrame(framesetter,CFRangeMake(0,0), path, NULL);
+                if ([self.images count]) {
+                    [self attachImagesWithFrame:textFrame withImages:self.images withContext:ctx];
+                }
                 CGPathRelease(path);
                 CFRelease(framesetter);
             }
@@ -587,6 +623,99 @@ NSDataDetector* sharedReusableDataDetector(NSTextCheckingTypes types)
 	} else {
 		[super drawTextInRect:aRect];
 	}
+}
+
+-(void)attachImagesWithFrame:(CTFrameRef)f withImages:(NSMutableArray *)imags withContext:(CGContextRef) ctx//inColumnView:(OHAttributedLabel*)col
+{
+    CGFloat emotionOriginYOffset = self.font.lineHeight*kEmotiomOriginYOffsetRatioWithLineHeight;
+    
+    //drawing images
+    NSArray *lines = (NSArray *)CTFrameGetLines(f); //1
+    
+    NSMutableArray *imgs = [NSMutableArray array];
+    
+    CGPoint origins[[lines count]];
+    CTFrameGetLineOrigins(f, CFRangeMake(0, 0), origins); //2
+    
+    int imgIndex = 0; //3
+    NSDictionary* nextImage = [imags objectAtIndex:imgIndex];
+    int imgLocation = [[nextImage objectForKey:@"location"] intValue];
+    
+    //find images for the current column
+    CFRange frameRange = CTFrameGetVisibleStringRange(f); //4
+    while ( imgLocation < frameRange.location ) {
+        imgIndex++;
+        if (imgIndex>=[imags count]) return; //quit if no images for this column
+        nextImage = [imags objectAtIndex:imgIndex];
+        imgLocation = [[nextImage objectForKey:@"location"] intValue];
+    }
+    
+    NSUInteger lineIndex = 0;
+    for (id lineObj in lines) { //5
+        CTLineRef line = (__bridge CTLineRef)lineObj;
+        
+        for (id runObj in (NSArray *)CTLineGetGlyphRuns(line)) { //6
+            CTRunRef run = (__bridge CTRunRef)runObj;
+            CFRange runRange = CTRunGetStringRange(run);
+            
+            if ( (runRange.location <= imgLocation && runRange.location+runRange.length > imgLocation)) { //7
+	            CGRect runBounds;
+	            CGFloat ascent;//height above the baseline
+	            CGFloat descent;//height below the baseline
+	            runBounds.size.width = CTRunGetTypographicBounds(run, CFRangeMake(0, 0), &ascent, &descent, NULL); //8
+	            runBounds.size.height = ascent + descent;
+                
+	            CGFloat xOffset = CTLineGetOffsetForStringIndex(line, CTRunGetStringRange(run).location, NULL); //9
+	            runBounds.origin.x = origins[lineIndex].x  + xOffset;
+	            runBounds.origin.y = origins[lineIndex].y;
+	            runBounds.origin.y -= descent;
+
+                UIImage *img = [UIImage imageNamed: [nextImage objectForKey:@"fileName"] ];
+                CGPathRef pathRef = CTFrameGetPath(f); //10
+                CGRect colRect = CGPathGetBoundingBox(pathRef);
+                CGRect imgBounds = CGRectOffset(runBounds, colRect.origin.x, colRect.origin.y);
+                [imgs addObject: //11
+                 [NSArray arrayWithObjects:img, NSStringFromCGRect(imgBounds) , nil]
+                 ];
+                //load the next image //12
+                imgIndex++;
+                if (imgIndex < [self.images count]) {
+                    nextImage = [self.images objectAtIndex: imgIndex];
+                    imgLocation = [[nextImage objectForKey: @"location"] intValue];
+                }
+                
+            }
+        }
+        lineIndex++;
+    }
+    
+//    if ([lines count]==0 && [imags count]>0) {
+//        int x = 0;
+//        for (NSDictionary *d in imags) {
+//            UIImage *img = [UIImage imageNamed: [d objectForKey:@"fileName"] ];
+//            int width = [[d objectForKey:@"width"] intValue];
+//            int height = [[d objectForKey:@"height"] intValue];
+//            
+//            [imgs addObject: //11
+//             [NSArray arrayWithObjects:img, NSStringFromCGRect(CGRectMake(x, 0, width, height)) , nil]
+//             ];
+//            x += width;
+//        }
+//        
+//    }
+    
+    for (NSArray* imageData in imgs)
+    {
+        if (imageData.count > 0)
+        {
+            UIImage* img = [imageData objectAtIndex:0];
+            CGRect imgBounds = CGRectFromString([imageData objectAtIndex:1]);
+            imgBounds.origin.y -= emotionOriginYOffset; //稍微矫正下。
+            
+            CGContextDrawImage(ctx, imgBounds, img.CGImage);
+        }
+    }
+    
 }
 
 -(void)drawActiveLinkHighlightForRect:(CGRect)rect

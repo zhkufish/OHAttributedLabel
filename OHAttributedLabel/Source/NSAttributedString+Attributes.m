@@ -36,6 +36,7 @@
 #endif
 
 NSString* kOHLinkAttributeName = @"NSLinkAttributeName"; // Use the same value as OSX, to be compatible in case Apple port this to iOS one day too
+NSString* kOHEmotionAttributeName = @"NSEmotionAttributeName";
 
 /////////////////////////////////////////////////////////////////////////////////////
 #pragma mark - NSAttributedString Additions
@@ -73,7 +74,7 @@ NSString* kOHLinkAttributeName = @"NSLinkAttributeName"; // Use the same value a
     {
         CFRange fitCFRange = CFRangeMake(0,0);
         sz = CTFramesetterSuggestFrameSizeWithConstraints(framesetter,CFRangeMake(0,0),NULL,maxSize,&fitCFRange);
-        sz = CGSizeMake( floor(sz.width+1) , floor(sz.height+1) ); // take 1pt of margin for security
+        sz = CGSizeMake( floor(sz.width+1) , floor(sz.height + ([[[UIDevice currentDevice] systemVersion] floatValue] < 7 ? 4 : 2)) ); // take 1pt of margin for security
         CFRelease(framesetter);
 
         if (fitRange)
@@ -402,6 +403,15 @@ static NSString* const kHelveticaNeueUI_Bold_Italic = @".HelveticaNeueUI-BoldIta
     }
 }
 
+-(void)setEmotion:(NSString *)link
+{
+//    NSLog(@"%@-%@",self,link);
+    [self removeAttribute:kOHEmotionAttributeName range:NSMakeRange(0,[self length])]; // Work around for Apple leak
+    if (link)
+    {
+        [self addAttribute:kOHEmotionAttributeName value:link range:NSMakeRange(0,[self length])];
+    }
+}
 @end
 
 

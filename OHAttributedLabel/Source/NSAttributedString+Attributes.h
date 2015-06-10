@@ -31,7 +31,7 @@
 
 #import "OHParagraphStyle.h"
 extern NSString* kOHLinkAttributeName;
-
+extern NSString* kOHEmotionAttributeName;
 /////////////////////////////////////////////////////////////////////////////////////
 #pragma mark - NSAttributedString Additions
 
@@ -95,6 +95,7 @@ extern NSString* kOHLinkAttributeName;
 -(void)setParagraphStyle:(OHParagraphStyle*)style range:(NSRange)range;
 
 -(void)setLink:(NSURL*)link range:(NSRange)range;
+-(void)setEmotion:(NSString *)link;
 @end
 
 
