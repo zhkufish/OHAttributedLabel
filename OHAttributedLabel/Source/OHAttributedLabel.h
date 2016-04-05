@@ -84,6 +84,8 @@ typedef NS_OPTIONS(int32_t, OHBoldStyleTrait) {
 //! Force recomputation of automatically detected links. Useful if you changed a condition that affect link colors in your delegate implementation for example.
 -(void)setNeedsRecomputeLinksInText;
 
+-(void)resetTextFrame;
+
 /* Links configuration */
 //! Defaults to NSTextCheckingTypeLink, + NSTextCheckingTypePhoneNumber if "tel:" URL scheme is supported.
 @property(nonatomic, assign) NSTextCheckingTypes automaticallyAddLinksForType;

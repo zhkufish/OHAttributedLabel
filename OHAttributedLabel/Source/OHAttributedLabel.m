@@ -48,7 +48,7 @@
 #pragma mark - Private interface
 /////////////////////////////////////////////////////////////////////////////////////
 
-const CGFloat kEmotiomOriginYOffsetRatioWithLineHeight = 0.20; //±íÇé»æÖÆµÄy×ø±ê½ÃÕıÖµ£¬ºÍ×ÖÌå¸ß¶ÈµÄ±ÈÀı£¬Ô½´óÔ½ÍùÏÂ
+const CGFloat kEmotiomOriginYOffsetRatioWithLineHeight = 0.20; //è¡¨æƒ…ç»˜åˆ¶çš„yåæ ‡çŸ«æ­£å€¼ï¼Œå’Œå­—ä½“é«˜åº¦çš„æ¯”ä¾‹ï¼Œè¶Šå¤§è¶Šå¾€ä¸‹
 const int UITextAlignmentJustify = ((UITextAlignment)kCTJustifiedTextAlignment);
 
 @interface OHAttributedLabel(/* Private */) <UIGestureRecognizerDelegate>
@@ -66,7 +66,6 @@ const int UITextAlignmentJustify = ((UITextAlignment)kCTJustifiedTextAlignment);
 @property(nonatomic, retain) NSTextCheckingResult* activeLink;
 -(NSTextCheckingResult*)linkAtCharacterIndex:(CFIndex)idx;
 -(NSTextCheckingResult*)linkAtPoint:(CGPoint)pt;
--(void)resetTextFrame;
 -(void)drawActiveLinkHighlightForRect:(CGRect)rect;
 -(void)recomputeLinksInTextIfNeeded;
 #if OHATTRIBUTEDLABEL_WARN_ABOUT_KNOWN_ISSUES
@@ -542,7 +541,7 @@ NSDataDetector* sharedReusableDataDetector(NSTextCheckingTypes types)
             
             [self.images removeAllObjects];
             if ([self.images count]<=0) {
-                //Ëã³öËùÓĞÍ¼Æ¬
+                //ç®—å‡ºæ‰€æœ‰å›¾ç‰‡
                 if (self.images==nil) {
                     self.images = [NSMutableArray array];
                 }
@@ -581,7 +580,8 @@ NSDataDetector* sharedReusableDataDetector(NSTextCheckingTypes types)
                 [mutAS setTextColor:self.highlightedTextColor];
                 attributedStringToDisplay = mutAS;
             }
-            if (textFrame == NULL)
+            //è¿™é‡Œå»æ‰åˆ¤æ–­,æœ‰å¯èƒ½ä¼šå¯¼è‡´åå°æ”¾ç½®ä¹…äº†ä¹‹å,å›åˆ°å‰å°è¡¨æƒ…æ¶ˆå¤±
+//            if (textFrame == NULL)
             {
                 CFAttributedStringRef cfAttrStrWithLinks = (__bridge CFAttributedStringRef)attributedStringToDisplay;
                 CTFramesetterRef framesetter = CTFramesetterCreateWithAttributedString(cfAttrStrWithLinks);
@@ -689,28 +689,13 @@ NSDataDetector* sharedReusableDataDetector(NSTextCheckingTypes types)
         lineIndex++;
     }
     
-//    if ([lines count]==0 && [imags count]>0) {
-//        int x = 0;
-//        for (NSDictionary *d in imags) {
-//            UIImage *img = [UIImage imageNamed: [d objectForKey:@"fileName"] ];
-//            int width = [[d objectForKey:@"width"] intValue];
-//            int height = [[d objectForKey:@"height"] intValue];
-//            
-//            [imgs addObject: //11
-//             [NSArray arrayWithObjects:img, NSStringFromCGRect(CGRectMake(x, 0, width, height)) , nil]
-//             ];
-//            x += width;
-//        }
-//        
-//    }
-    
     for (NSArray* imageData in imgs)
     {
         if (imageData.count > 0)
         {
             UIImage* img = [imageData objectAtIndex:0];
             CGRect imgBounds = CGRectFromString([imageData objectAtIndex:1]);
-            imgBounds.origin.y -= emotionOriginYOffset; //ÉÔÎ¢½ÃÕıÏÂ¡£
+            imgBounds.origin.y -= emotionOriginYOffset;  //ç¨å¾®çŸ«æ­£ä¸‹
             
             CGContextDrawImage(ctx, imgBounds, img.CGImage);
         }
